@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>隨機分組系統</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d0f18">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="隨機分組">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+
+:root {
+  --bg: #0d0f18;
+  --surface: #13161f;
+  --card: #1c2030;
+  --card2: #202438;
+  --border: #282d47;
+  --border-light: #323860;
+  --accent: #7c6af7;
+  --accent2: #f06292;
+  --accent3: #4dd0e1;
+  --accent-glow: rgba(124,106,247,0.15);
+  --green: #69f0ae;
+  --red: #ff5370;
+  --yellow: #ffd740;
+  --text: #e4e8f7;
+  --text-dim: #7a82a6;
+  --radius: 12px;
+  --ease: cubic-bezier(.4,0,.2,1);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Noto Sans TC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+header {
+  padding: 40px 24px 28px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+header::before {
+  content: '';
+  position: absolute;
+  top: -60px; left: 50%;
+  transform: translateX(-50%);
+  width: 600px; height: 200px;
+  background: radial-gradient(ellipse, rgba(124,106,247,.18) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+header h1 {
+  font-size: clamp(1.8rem,5vw,2.8rem);
+  font-weight: 900;
+  letter-spacing: .03em;
+  background: linear-gradient(100deg, var(--accent) 0%, var(--accent2) 60%, var(--accent3) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+header p { color: var(--text-dim); margin-top: 8px; font-size: .9rem; }
+
+.container { max-width: 920px; margin: 0 auto; padding: 0 20px 80px; }
+
+/* ── Tabs ── */
+.tabs {
+  display: flex; gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px;
+  margin-bottom: 28px;
+}
+
+.tab {
+  flex: 1; padding: 10px 0;
+  border: none; background: transparent;
+  color: var(--text-dim);
+  font-family: inherit; font-size: .9rem; font-weight: 700;
+  border-radius: 8px; cursor: pointer;
+  transition: .2s var(--ease);
+}
+
+.tab.active {
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  color: #fff;
+}
+
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ── Section titles ── */
+.sec-title {
+  font-size: .78rem; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--text-dim); margin-bottom: 12px;
+}
+
+/* ── Cards ── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 18px;
+}
+
+/* ── Mode toggle ── */
+.mode-toggle {
+  display: flex; gap: 8px; margin-bottom: 20px;
+}
+
+.mode-btn {
+  flex: 1; padding: 12px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-dim);
+  font-family: inherit; font-size: .88rem; font-weight: 700;
+  cursor: pointer; transition: .2s var(--ease);
+  text-align: center;
+}
+
+.mode-btn.active {
+  background: var(--accent-glow);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Members input ── */
+.members-area { display: flex; flex-direction: column; gap: 16px; }
+
+.member-group-header {
+  display: flex; align-items: center;
+  justify-content: space-between; margin-bottom: 8px;
+}
+
+.group-label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: .88rem; font-weight: 700;
+}
+
+.color-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+}
+
+.count-badge {
+  font-size: .75rem; padding: 2px 9px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+.count-badge b { color: var(--text); }
+
+textarea {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: inherit; font-size: .88rem; line-height: 1.8;
+  padding: 12px 14px; resize: vertical; outline: none;
+  transition: border-color .2s;
+}
+
+textarea:focus { border-color: var(--accent); }
+textarea::placeholder { color: var(--text-dim); }
+
+/* ── Add category ── */
+.add-cat-row {
+  display: flex; gap: 8px; align-items: center;
+  margin-top: 4px;
+}
+
+.input-inline {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: inherit; font-size: .88rem;
+  padding: 8px 12px; outline: none; flex: 1;
+}
+
+.input-inline:focus { border-color: var(--accent); }
+
+.btn-sm {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-family: inherit; font-size: .82rem; font-weight: 700;
+  cursor: pointer; border: none;
+  transition: .18s var(--ease); white-space: nowrap;
+}
+
+.btn-add { background: var(--accent-glow); color: var(--accent); border: 1px solid var(--accent); }
+.btn-add:hover { background: rgba(124,106,247,.28); }
+
+.btn-remove { background: rgba(255,83,112,.1); color: var(--red); border: 1px solid rgba(255,83,112,.35); }
+.btn-remove:hover { background: rgba(255,83,112,.2); }
+
+/* ── Settings ── */
+.settings-grid { display: flex; flex-direction: column; gap: 14px; }
+
+.setting-row {
+  display: flex; align-items: center;
+  gap: 12px; flex-wrap: wrap;
+}
+
+.setting-row label { flex: 1; font-size: .9rem; min-width: 160px; }
+
+.num-input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: inherit; font-size: .92rem;
+  padding: 8px 0; width: 72px; text-align: center; outline: none;
+}
+
+.num-input:focus { border-color: var(--accent); }
+
+.text-input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: inherit; font-size: .88rem;
+  padding: 8px 12px; width: 140px; outline: none;
+}
+
+.text-input:focus { border-color: var(--accent); }
+
+.hint { font-size: .8rem; color: var(--text-dim); margin-top: 6px; line-height: 1.6; }
+
+/* ── Constraint tags ── */
+.constraint-box {
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+.constraint-row {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+}
+
+select.sel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: inherit; font-size: .85rem;
+  padding: 7px 10px; outline: none; cursor: pointer;
+}
+
+select.sel:focus { border-color: var(--accent); }
+
+.constraint-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: .8rem;
+}
+
+.constraint-tag button {
+  background: none; border: none;
+  color: var(--text-dim); cursor: pointer; font-size: .9rem; line-height: 1;
+  padding: 0 2px;
+}
+
+.constraint-tag button:hover { color: var(--red); }
+
+.tag-must { border-color: rgba(105,240,174,.4); color: var(--green); }
+.tag-must { background: rgba(105,240,174,.07); }
+.tag-cant { border-color: rgba(255,83,112,.4); color: var(--red); }
+.tag-cant { background: rgba(255,83,112,.07); }
+
+/* ── Preview bar ── */
+.preview-bar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: .84rem;
+  color: var(--text-dim);
+  margin-bottom: 18px;
+  min-height: 44px;
+}
+
+.preview-bar b { color: var(--text); }
+
+/* ── Draw button ── */
+.btn-draw {
+  width: 100%; padding: 16px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border: none; border-radius: var(--radius);
+  color: #fff; font-family: inherit;
+  font-size: 1.05rem; font-weight: 900;
+  letter-spacing: .05em; cursor: pointer;
+  transition: opacity .2s, transform .2s;
+}
+
+.btn-draw:hover { opacity: .88; transform: translateY(-1px); }
+.btn-draw:active { transform: none; }
+.btn-draw:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+
+/* ── Result ── */
+.result-topbar {
+  display: flex; align-items: center;
+  justify-content: space-between; flex-wrap: wrap;
+  gap: 10px; margin-bottom: 18px;
+}
+
+.result-topbar h2 { font-size: 1.05rem; font-weight: 700; }
+
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.btn-action {
+  padding: 8px 16px; border-radius: 8px;
+  font-family: inherit; font-size: .82rem; font-weight: 700;
+  cursor: pointer; transition: .18s var(--ease);
+}
+
+.btn-copy { background: var(--card); border: 1px solid var(--border); color: var(--text); }
+.btn-copy:hover { border-color: var(--accent3); color: var(--accent3); }
+
+.btn-export { background: rgba(105,240,174,.08); border: 1px solid rgba(105,240,174,.4); color: var(--green); }
+.btn-export:hover { background: rgba(105,240,174,.16); }
+
+.btn-redraw { background: var(--accent-glow); border: 1px solid var(--accent); color: var(--accent); }
+.btn-redraw:hover { background: rgba(124,106,247,.25); }
+
+.summary-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+
+.chip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 14px; font-size: .82rem;
+}
+
+.chip b { color: var(--text); }
+.chip span { color: var(--text-dim); }
+
+/* ── Group cards ── */
+.groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.group-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  animation: fadeUp .28s ease both;
+  transition: transform .2s, border-color .2s;
+}
+
+.group-card:hover { transform: translateY(-3px); border-color: var(--border-light); }
+
+@keyframes fadeUp {
+  from { opacity:0; transform: translateY(10px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+
+.group-card-head {
+  padding: 13px 15px 10px;
+  background: linear-gradient(135deg, #1a1e30, #20243a);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.group-card-name { font-weight: 900; font-size: .97rem; }
+
+.group-card-count {
+  font-size: .75rem; color: var(--text-dim);
+  background: var(--bg);
+  border-radius: 20px; padding: 2px 9px;
+}
+
+.group-card-body { padding: 10px 14px; }
+
+.member-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 0; font-size: .86rem;
+  border-bottom: 1px solid rgba(40,45,71,.6);
+}
+
+.member-row:last-child { border-bottom: none; }
+
+.member-cat {
+  font-size: .7rem; padding: 1px 7px;
+  border-radius: 10px; font-weight: 700;
+  flex-shrink: 0;
+}
+
+.alert { padding: 12px 16px; border-radius: 10px; font-size: .88rem; margin-bottom: 14px; }
+.alert-error { background: rgba(255,83,112,.1); border: 1px solid rgba(255,83,112,.3); color: #ff8fa3; }
+.alert-warn { background: rgba(255,215,64,.08); border: 1px solid rgba(255,215,64,.3); color: var(--yellow); }
+
+@media (max-width: 520px) {
+  .groups-grid { grid-template-columns: 1fr 1fr; }
+  .mode-toggle { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎲 通用隨機分組系統</h1>
+  <p>支援多類別名單 · 指定組數或每組人數 · 限制條件設定</p>
+</header>
+
+<div class="container">
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('setup')">名單設定</button>
+    <button class="tab" onclick="switchTab('rules')">分組規則</button>
+    <button class="tab" onclick="switchTab('result')">抽籤結果</button>
+  </div>
+
+  <!-- ── 名單設定 ── -->
+  <div id="tab-setup" class="panel active">
+
+    <div class="card">
+      <div class="sec-title">類別設定</div>
+      <p class="hint" style="margin-bottom:14px">可以只用一個類別（一般分組），或新增多個類別（如不同屆別）。每個類別可設定每組最少幾人。</p>
+      <div id="categories-area"></div>
+      <div class="add-cat-row" style="margin-top:12px">
+        <input class="input-inline" id="new-cat-name" placeholder="新類別名稱（如：113屆）" maxlength="20">
+        <button class="btn-sm btn-add" onclick="addCategory()">＋ 新增類別</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── 分組規則 ── -->
+  <div id="tab-rules" class="panel">
+
+    <div class="card">
+      <div class="sec-title">分組方式</div>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="mode-btn-groups" onclick="setMode('groups')">
+          指定組數<br><span style="font-size:.78rem;font-weight:400;color:var(--text-dim)">自動計算每組人數</span>
+        </button>
+        <button class="mode-btn" id="mode-btn-pergroup" onclick="setMode('pergroup')">
+          指定每組人數<br><span style="font-size:.78rem;font-weight:400;color:var(--text-dim)">自動計算組數</span>
+        </button>
+      </div>
+      <div class="settings-grid">
+        <div class="setting-row" id="row-groups">
+          <label>組數</label>
+          <input type="number" class="num-input" id="num-groups" value="5" min="1" max="99" oninput="updatePreview()">
+        </div>
+        <div class="setting-row" id="row-pergroup" style="display:none">
+          <label>每組人數</label>
+          <input type="number" class="num-input" id="num-pergroup" value="4" min="1" max="99" oninput="updatePreview()">
+        </div>
+        <div class="setting-row">
+          <label>組名前綴</label>
+          <input type="text" class="text-input" id="group-prefix" value="第" placeholder="第">
+          <input type="text" class="text-input" id="group-suffix" value="組" placeholder="組" style="width:80px">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec-title">限制條件（選填）</div>
+      <div class="constraint-box" id="constraints-box">
+        <div class="hint">可設定「必須同組」或「不能同組」的條件。</div>
+      </div>
+      <div class="constraint-row" style="margin-top:12px">
+        <select class="sel" id="c-type">
+          <option value="must">必須同組</option>
+          <option value="cant">不能同組</option>
+        </select>
+        <input class="input-inline" id="c-name1" placeholder="成員甲">
+        <input class="input-inline" id="c-name2" placeholder="成員乙">
+        <button class="btn-sm btn-add" onclick="addConstraint()">＋ 新增</button>
+      </div>
+    </div>
+
+    <div class="preview-bar" id="preview-bar">請先在「名單設定」輸入成員名單。</div>
+    <button class="btn-draw" onclick="doAssign()">🎲 開始抽籤</button>
+  </div>
+
+  <!-- ── 抽籤結果 ── -->
+  <div id="tab-result" class="panel">
+    <div id="result-section">
+      <p style="color:var(--text-dim);text-align:center;padding:48px 0">尚未抽籤，請先完成名單設定後按「開始抽籤」。</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── State ──
+const PALETTE = [
+  '#7c6af7','#f06292','#4dd0e1','#ffd740','#69f0ae',
+  '#ff7043','#ba68c8','#4fc3f7','#a5d6a7','#ffb74d'
+];
+
+let categories = [
+  { id: 'cat0', name: '成員', color: PALETTE[0], minPerGroup: 0, names: [] }
+];
+let mode = 'groups';
+let constraints = [];
+let lastResult = null;
+
+// ── Tabs ──
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',['setup','rules','result'][i]===t));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  if (t==='rules') updatePreview();
+}
+
+// ── Categories ──
+function renderCategories() {
+  const area = document.getElementById('categories-area');
+  area.innerHTML = categories.map((cat,i) => `
+    <div class="card" style="background:var(--card2);margin-bottom:12px">
+      <div class="member-group-header">
+        <div class="group-label">
+          <div class="color-dot" style="background:${cat.color}"></div>
+          <span>${cat.name}</span>
+          <span class="count-badge"><b id="cnt-${cat.id}">0</b> 人</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <label style="font-size:.8rem;color:var(--text-dim)">每組至少</label>
+          <input type="number" class="num-input" style="width:56px"
+            value="${cat.minPerGroup}" min="0" max="20"
+            onchange="cats_setMin('${cat.id}',this.value)" title="每組最少幾人（0=不限）">
+          <label style="font-size:.8rem;color:var(--text-dim)">人</label>
+          ${categories.length>1?`<button class="btn-sm btn-remove" onclick="removeCategory('${cat.id}')">移除</button>`:''}
+        </div>
+      </div>
+      <textarea rows="6" placeholder="每行一個名字&#10;例如：&#10;王小明&#10;陳大華"
+        oninput="cats_update('${cat.id}',this.value)">${cat.names.join('\n')}</textarea>
+    </div>
+  `).join('');
+  updateAllCounts();
+}
+
+function cats_update(id, val) {
+  const cat = categories.find(c=>c.id===id);
+  if (!cat) return;
+  cat.names = val.split('\n').map(s=>s.trim()).filter(Boolean);
+  const el = document.getElementById('cnt-'+id);
+  if (el) el.textContent = cat.names.length;
+  updatePreview();
+}
+
+function cats_setMin(id, val) {
+  const cat = categories.find(c=>c.id===id);
+  if (cat) cat.minPerGroup = parseInt(val)||0;
+  updatePreview();
+}
+
+function updateAllCounts() {
+  categories.forEach(cat => {
+    const el = document.getElementById('cnt-'+cat.id);
+    if (el) el.textContent = cat.names.length;
+  });
+}
+
+function addCategory() {
+  const inp = document.getElementById('new-cat-name');
+  const name = inp.value.trim();
+  if (!name) { inp.focus(); return; }
+  const id = 'cat'+ Date.now();
+  const color = PALETTE[categories.length % PALETTE.length];
+  categories.push({ id, name, color, minPerGroup: 0, names: [] });
+  inp.value = '';
+  renderCategories();
+}
+
+function removeCategory(id) {
+  categories = categories.filter(c=>c.id!==id);
+  renderCategories();
+}
+
+// ── Mode ──
+function setMode(m) {
+  mode = m;
+  document.getElementById('mode-btn-groups').classList.toggle('active', m==='groups');
+  document.getElementById('mode-btn-pergroup').classList.toggle('active', m==='pergroup');
+  document.getElementById('row-groups').style.display = m==='groups'?'flex':'none';
+  document.getElementById('row-pergroup').style.display = m==='pergroup'?'flex':'none';
+  updatePreview();
+}
+
+// ── Constraints ──
+function addConstraint() {
+  const type = document.getElementById('c-type').value;
+  const n1 = document.getElementById('c-name1').value.trim();
+  const n2 = document.getElementById('c-name2').value.trim();
+  if (!n1||!n2) return;
+  if (n1===n2) return;
+  constraints.push({type,n1,n2});
+  document.getElementById('c-name1').value='';
+  document.getElementById('c-name2').value='';
+  renderConstraints();
+}
+
+function removeConstraint(i) {
+  constraints.splice(i,1);
+  renderConstraints();
+}
+
+function renderConstraints() {
+  const box = document.getElementById('constraints-box');
+  const tags = constraints.map((c,i)=>`
+    <span class="constraint-tag ${c.type==='must'?'tag-must':'tag-cant'}">
+      ${c.type==='must'?'✅ 必須同組':'❌ 不能同組'}：${c.n1} ＆ ${c.n2}
+      <button onclick="removeConstraint(${i})">✕</button>
+    </span>`).join('');
+  box.innerHTML = `<div class="hint">可設定「必須同組」或「不能同組」的條件。</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${tags}</div>`;
+}
+
+// ── Preview ──
+function updatePreview() {
+  const bar = document.getElementById('preview-bar');
+  if (!bar) return;
+  const total = categories.reduce((s,c)=>s+c.names.length,0);
+  if (!total) { bar.innerHTML='請先在「名單設定」輸入成員名單。'; return; }
+
+  let numGroups, perGroup;
+  if (mode==='groups') {
+    numGroups = parseInt(document.getElementById('num-groups').value)||1;
+    const base = Math.floor(total/numGroups), extra = total%numGroups;
+    perGroup = extra>0 ? `${base}～${base+1}` : `${base}`;
+  } else {
+    perGroup = parseInt(document.getElementById('num-pergroup').value)||1;
+    numGroups = Math.ceil(total/perGroup);
+  }
+
+  const catSummary = categories.filter(c=>c.names.length>0)
+    .map(c=>`<span style="color:${c.color};font-weight:700">${c.name} ${c.names.length}人</span>`).join('　');
+  bar.innerHTML=`共 <b>${total}</b> 人（${catSummary}）　→　預計分成 <b>${numGroups}</b> 組，每組約 <b>${perGroup}</b> 人`;
+}
+
+// ── Assign ──
+function shuffle(arr) {
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+
+function doAssign() {
+  const total = categories.reduce((s,c)=>s+c.names.length,0);
+  if (!total) { alert('請先輸入名單！'); return; }
+
+  let numGroups;
+  if (mode==='groups') {
+    numGroups = parseInt(document.getElementById('num-groups').value)||1;
+  } else {
+    const pp = parseInt(document.getElementById('num-pergroup').value)||1;
+    numGroups = Math.ceil(total/pp);
+  }
+
+  const prefix = document.getElementById('group-prefix').value||'第';
+  const suffix = document.getElementById('group-suffix').value||'組';
+  const errors = [];
+
+  // Validate min per group
+  categories.forEach(cat => {
+    if (cat.minPerGroup > 0 && cat.names.length < numGroups * cat.minPerGroup) {
+      errors.push(`「${cat.name}」共 ${cat.names.length} 人，無法滿足每組至少 ${cat.minPerGroup} 人（需至少 ${numGroups*cat.minPerGroup} 人）`);
+    }
+  });
+
+  if (errors.length) {
+    showResult(errors.map(e=>`<div class="alert alert-error">❌ ${e}</div>`).join(''));
+    switchTab('result'); return;
+  }
+
+  // Build groups
+  const groups = Array.from({length:numGroups},(_,i)=>({
+    name: prefix+(i+1)+suffix,
+    members: []
+  }));
+
+  const warns = [];
+
+  // Handle "must together" constraints first
+  const mustGroups = [];
+  const assignedByMust = new Set();
+  constraints.filter(c=>c.type==='must').forEach(c=>{
+    const existing = mustGroups.find(g=>g.includes(c.n1)||g.includes(c.n2));
+    if (existing) {
+      if (!existing.includes(c.n1)) existing.push(c.n1);
+      if (!existing.includes(c.n2)) existing.push(c.n2);
+    } else {
+      mustGroups.push([c.n1,c.n2]);
+    }
+  });
+
+  // Assign must-groups to actual groups
+  const shuffledGroupIdx = shuffle([...Array(numGroups).keys()]);
+  mustGroups.forEach((mg,i) => {
+    const gIdx = shuffledGroupIdx[i % numGroups];
+    mg.forEach(name => {
+      const cat = categories.find(c=>c.names.includes(name));
+      if (!cat) { warns.push(`限制條件中的「${name}」不在名單內，已忽略`); return; }
+      groups[gIdx].members.push({name, catName:cat.name, color:cat.color});
+      assignedByMust.add(name);
+    });
+  });
+
+  // Assign each category with min requirement
+  categories.forEach(cat => {
+    if (!cat.names.length) return;
+    const remaining = shuffle(cat.names.filter(n=>!assignedByMust.has(n)));
+
+    if (cat.minPerGroup > 0) {
+      // Distribute min first
+      const groupOrder = shuffle([...Array(numGroups).keys()]);
+      let ri = 0;
+      groupOrder.forEach(gi => {
+        const current = groups[gi].members.filter(m=>m.catName===cat.name).length;
+        for (let k=current; k<cat.minPerGroup && ri<remaining.length; k++,ri++) {
+          groups[gi].members.push({name:remaining[ri], catName:cat.name, color:cat.color});
+        }
+      });
+      // Distribute rest evenly
+      const rest = remaining.slice(ri);
+      rest.forEach((name,idx)=>{
+        groups[idx%numGroups].members.push({name, catName:cat.name, color:cat.color});
+      });
+    } else {
+      remaining.forEach((name,idx)=>{
+        groups[idx%numGroups].members.push({name, catName:cat.name, color:cat.color});
+      });
+    }
+  });
+
+  // Check "cant together" constraints
+  constraints.filter(c=>c.type==='cant').forEach(c=>{
+    groups.forEach(g=>{
+      const names = g.members.map(m=>m.name);
+      if (names.includes(c.n1) && names.includes(c.n2)) {
+        warns.push(`⚠ 「${c.n1}」與「${c.n2}」被分在同一組（${g.name}），條件衝突無法完全滿足`);
+      }
+    });
+  });
+
+  lastResult = { groups, numGroups, total, warns, prefix, suffix };
+
+  const warnHtml = warns.map(w=>`<div class="alert alert-warn">${w}</div>`).join('');
+  const chips = `
+    <div class="summary-chips">
+      <div class="chip"><b>${total}</b> <span>位成員</span></div>
+      <div class="chip"><b>${numGroups}</b> <span>組</span></div>
+      ${categories.filter(c=>c.names.length).map(c=>`<div class="chip"><b style="color:${c.color}">${c.name}</b> <span>${c.names.length}人</span></div>`).join('')}
+    </div>`;
+
+  const cards = groups.map((g,idx)=>{
+    const delay = idx*0.05;
+    const rows = g.members.map(m=>`
+      <div class="member-row">
+        <div class="color-dot" style="background:${m.color}"></div>
+        <span style="flex:1">${m.name}</span>
+        ${categories.length>1?`<span class="member-cat" style="background:${m.color}22;color:${m.color};border:1px solid ${m.color}66">${m.catName}</span>`:''}
+      </div>`).join('');
+    return `<div class="group-card" style="animation-delay:${delay}s">
+      <div class="group-card-head">
+        <span class="group-card-name">${g.name}</span>
+        <span class="group-card-count">${g.members.length} 人</span>
+      </div>
+      <div class="group-card-body">${rows}</div>
+    </div>`;
+  }).join('');
+
+  showResult(`
+    <div class="result-topbar">
+      <h2>🎉 分組完成！共 ${numGroups} 組</h2>
+      <div class="btn-row">
+        <button class="btn-action btn-copy" onclick="copyResult()">📋 複製</button>
+        <button class="btn-action btn-export" onclick="exportCSV()">⬇ 匯出 CSV</button>
+        <button class="btn-action btn-redraw" onclick="doAssign()">🔀 重新抽</button>
+      </div>
+    </div>
+    ${warnHtml}${chips}
+    <div class="groups-grid">${cards}</div>
+  `);
+  switchTab('result');
+}
+
+function showResult(html) {
+  document.getElementById('result-section').innerHTML = html;
+}
+
+// ── Copy ──
+function copyResult() {
+  if (!lastResult) return;
+  const text = lastResult.groups.map(g=>{
+    const members = g.members.map(m=>m.name+(lastResult.groups[0].members[0]?.catName && categories.length>1?`（${m.catName}）`:'')).join('\n  ');
+    return `【${g.name}】共${g.members.length}人\n  ${members}`;
+  }).join('\n\n');
+  navigator.clipboard.writeText(text).then(()=>{
+    const btn=document.querySelector('.btn-copy');
+    const o=btn.textContent; btn.textContent='✅ 已複製';
+    setTimeout(()=>btn.textContent=o,1800);
+  });
+}
+
+// ── Export CSV ──
+function exportCSV() {
+  if (!lastResult) return;
+  const rows=[['組別','姓名',...( categories.length>1?['類別']:[])]];
+  lastResult.groups.forEach(g=>{
+    g.members.forEach(m=>{
+      rows.push([g.name, m.name,...(categories.length>1?[m.catName]:[])]);
+    });
+  });
+  const bom='\uFEFF';
+  const csv=bom+rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download='分組結果.csv'; a.click();
+}
+
+// ── Init ──
+renderCategories();
+</script>
+</body>
+</html>
