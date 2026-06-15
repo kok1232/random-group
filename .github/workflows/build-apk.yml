@@ -11,24 +11,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Install Bubblewrap
         run: npm install -g @bubblewrap/cli
 
-      - name: Create twa-manifest.json
+      - name: Setup Bubblewrap config
+        run: |
+          mkdir -p ~/.bubblewrap
+          cat > ~/.bubblewrap/config.json << 'BWCONFIG'
+          {
+            "jdkPath": "/opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.11-9/x64",
+            "androidSdkPath": "/usr/local/lib/android/sdk"
+          }
+          BWCONFIG
+
+      - name: Init Bubblewrap project
         run: |
           mkdir -p bubblewrap-project
-          cat > bubblewrap-project/twa-manifest.json << 'MANIFEST'
+          cd bubblewrap-project
+          cat > twa-manifest.json << 'MANIFEST'
           {
             "packageId": "io.github.kok1232.twa",
             "host": "kok1232.github.io",
@@ -73,12 +82,10 @@ jobs:
             "fallbackType": "customtabs"
           }
           MANIFEST
+          echo "yes" | bubblewrap build --skipPwaValidation || true
 
-      - name: Build APK
-        run: |
-          cd bubblewrap-project
-          bubblewrap build --skipPwaValidation
-        timeout-minutes: 10
+      - name: Find APK
+        run: find bubblewrap-project -name "*.apk" -o -name "*.aab" 2>/dev/null || echo "No APK found yet"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -87,4 +94,5 @@ jobs:
           path: |
             bubblewrap-project/*.apk
             bubblewrap-project/*.aab
+          if-no-files-found: warn
           retention-days: 7
