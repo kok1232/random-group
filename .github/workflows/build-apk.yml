@@ -31,76 +31,64 @@ jobs:
           echo "{\"jdkPath\": \"$JAVA_HOME\", \"androidSdkPath\": \"$ANDROID_SDK\"}" > ~/.bubblewrap/config.json
           cat ~/.bubblewrap/config.json
 
-      - name: Init Bubblewrap project
+      - name: Init and Build
         run: |
           mkdir -p bubblewrap-project
           cd bubblewrap-project
           cat > twa-manifest.json << 'MANIFEST'
-{
-  "packageId": "io.github.kok1232.twa",
-  "host": "kok1232.github.io",
-  "name": "隨機分組",
-  "launcherName": "隨機分組",
-  "display": "standalone",
-  "themeColor": "#0d0f18",
-  "navigationColor": "#0d0f18",
-  "navigationColorDark": "#0d0f18",
-  "navigationDividerColor": "#0d0f18",
-  "navigationDividerColorDark": "#0d0f18",
-  "backgroundColor": "#0d0f18",
-  "enableNotifications": false,
-  "startUrl": "/random-group/",
-  "iconUrl": "https://kok1232.github.io/random-group/icons/icon-512.png",
-  "maskableIconUrl": "https://kok1232.github.io/random-group/icons/icon-512.png",
-  "monochromeIconUrl": "https://kok1232.github.io/random-group/icons/icon-512.png",
-  "shortcuts": [],
-  "generatorApp": "bubblewrap-cli",
-  "webManifestUrl": "https://kok1232.github.io/random-group/manifest.json",
-  "isChromeOSOnly": false,
-  "isMetaQuest": false,
-  "fullScopeUrl": "https://kok1232.github.io/random-group/",
-  "minSdkVersion": 19,
-  "orientation": "portrait",
-  "fingerprints": [],
-  "signing": {
-    "outputFilename": "random-group.apk",
-    "alias": "android",
-    "fullName": "kok1232",
-    "organization": "kok1232",
-    "organizationalUnit": "kok1232",
-    "countryCode": "TW",
-    "keystore": "android.keystore"
-  },
-  "appVersionName": "1.0.0",
-  "appVersionCode": 1,
-  "signingMode": "none",
-  "enableSiteSettingsShortcut": true,
-  "additionalTrustedOrigins": [],
-  "retainedBundles": [],
-  "fallbackType": "customtabs"
-}
-MANIFEST
+          {
+            "packageId": "io.github.kok1232.twa",
+            "host": "kok1232.github.io",
+            "name": "隨機分組",
+            "launcherName": "隨機分組",
+            "display": "standalone",
+            "themeColor": "#0d0f18",
+            "navigationColor": "#0d0f18",
+            "navigationColorDark": "#0d0f18",
+            "navigationDividerColor": "#0d0f18",
+            "navigationDividerColorDark": "#0d0f18",
+            "backgroundColor": "#0d0f18",
+            "enableNotifications": false,
+            "startUrl": "/random-group/",
+            "iconUrl": "https://kok1232.github.io/random-group/icons/icon-512.png",
+            "maskableIconUrl": "https://kok1232.github.io/random-group/icons/icon-512.png",
+            "monochromeIconUrl": "https://kok1232.github.io/random-group/icons/icon-512.png",
+            "shortcuts": [],
+            "generatorApp": "bubblewrap-cli",
+            "webManifestUrl": "https://kok1232.github.io/random-group/manifest.json",
+            "isChromeOSOnly": false,
+            "isMetaQuest": false,
+            "fullScopeUrl": "https://kok1232.github.io/random-group/",
+            "minSdkVersion": 19,
+            "orientation": "portrait",
+            "fingerprints": [],
+            "signing": {
+              "outputFilename": "random-group.apk",
+              "alias": "android",
+              "fullName": "kok1232",
+              "organization": "kok1232",
+              "organizationalUnit": "kok1232",
+              "countryCode": "TW",
+              "keystore": "android.keystore"
+            },
+            "appVersionName": "1.0.0",
+            "appVersionCode": 1,
+            "signingMode": "none",
+            "enableSiteSettingsShortcut": true,
+            "additionalTrustedOrigins": [],
+            "retainedBundles": [],
+            "fallbackType": "customtabs"
+          }
+          MANIFEST
           yes "" | bubblewrap build --skipPwaValidation 2>&1 || true
-
-      - name: List output files
-        run: |
-          echo "=== bubblewrap-project ==="
-          find bubblewrap-project -type f | head -50
-          echo "=== app folder ==="
-          find bubblewrap-project/app -type f 2>/dev/null | head -50 || echo "no app folder"
-
-      - name: Build with Gradle directly
-        run: |
-          if [ -f "bubblewrap-project/gradlew" ]; then
-            cd bubblewrap-project
+          find . -name "*.apk" -o -name "*.aab" | head -20
+          if [ -f "gradlew" ]; then
             chmod +x gradlew
-            ./gradlew assembleRelease --no-daemon 2>&1
-          else
-            echo "No gradlew found, bubblewrap init may have failed"
+            ./gradlew assembleRelease --no-daemon
           fi
 
-      - name: Find all APK and AAB
-        run: find . -name "*.apk" -o -name "*.aab" 2>/dev/null
+      - name: Find APK files
+        run: find . -name "*.apk" -o -name "*.aab" 2>/dev/null || echo "No files found"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
