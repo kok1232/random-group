@@ -59,11 +59,25 @@ jobs:
           }
           EOF
 
+      # 1. 依照「螢幕擷取畫面 2026-06-15 123842.png」加入生成金鑰步驟
+      # 調整：直接在根目錄生成，避免 cd android 後的路徑混淆
+      - name: Sign AAB (Generate Keystore)
+        run: |
+          keytool -genkey -v -keystore release.keystore \
+            -alias release -keyalg RSA -keysize 2048 -validity 10000 \
+            -dbname "CN=kok1232, OU=kok1232, O=kok1232, L=TW, S=TW, C=TW" \
+            -storepass android123 -keypass android123
+
+      # 2. 修改原本的 Build AAB 步驟，帶入簽名參數
       - name: Build AAB
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew bundleRelease --no-daemon 2>&1
+          ./gradlew bundleRelease --no-daemon \
+            -Pandroid.injected.signing.store.file=${{ github.workspace }}/release.keystore \
+            -Pandroid.injected.signing.store.password=android123 \
+            -Pandroid.injected.signing.key.alias=release \
+            -Pandroid.injected.signing.key.password=android123 2>&1
 
       - name: Find AAB
         run: find . -name "*.aab" 2>/dev/null
