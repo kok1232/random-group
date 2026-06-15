@@ -82,7 +82,7 @@ jobs:
           bubblewrap build --skipPwaValidation
 
       - name: Upload APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: random-group-apk
           path: |
