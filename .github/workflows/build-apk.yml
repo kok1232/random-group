@@ -27,29 +27,38 @@ jobs:
       - name: Install Capacitor
         run: |
           npm init -y
-          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npm install @capacitor/core@latest @capacitor/cli@latest @capacitor/android@latest
 
-      - name: Init Capacitor
+      - name: Create www
         run: |
-          npx cap init "RandomGroup" "io.github.kok1232.randomgroup" --web-dir www
           mkdir -p www
-          cp index.html www/ 2>/dev/null || echo "no index.html"
-
-      - name: Create www/index.html with redirect
-        run: |
           cat > www/index.html << 'HTML'
-          <!DOCTYPE html>
-          <html>
-          <head>
+          <!DOCTYPE html><html><head>
           <meta http-equiv="refresh" content="0; url=https://kok1232.github.io/random-group/">
           <script>window.location.href='https://kok1232.github.io/random-group/';</script>
-          </head>
-          <body>Loading...</body>
-          </html>
+          </head><body>Loading...</body></html>
           HTML
 
-      - name: Add Android platform
+      - name: Init Capacitor
+        run: npx cap init "RandomGroup" "io.github.kok1232.randomgroup" --web-dir www
+
+      - name: Add Android
         run: npx cap add android
+
+      - name: Fix Kotlin conflicts
+        run: |
+          cd android
+          cat >> build.gradle << 'EOF'
+
+          configurations.all {
+              resolutionStrategy {
+                  force "org.jetbrains.kotlin:kotlin-stdlib:1.9.23"
+                  force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.23"
+                  force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.23"
+                  force "org.jetbrains.kotlin:kotlin-stdlib-common:1.9.23"
+              }
+          }
+          EOF
 
       - name: Build APK
         run: |
