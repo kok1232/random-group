@@ -49,7 +49,6 @@ jobs:
         run: |
           cd android
           cat >> build.gradle << 'EOF'
-
           configurations.all {
               resolutionStrategy {
                   force "org.jetbrains.kotlin:kotlin-stdlib:1.9.23"
@@ -60,19 +59,19 @@ jobs:
           }
           EOF
 
-      - name: Build APK
+      - name: Build AAB
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon 2>&1
+          ./gradlew bundleRelease --no-daemon 2>&1
 
-      - name: Find APK
-        run: find . -name "*.apk" 2>/dev/null
+      - name: Find AAB
+        run: find . -name "*.aab" 2>/dev/null
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: random-group-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: random-group-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: warn
           retention-days: 7
