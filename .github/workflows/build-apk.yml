@@ -24,47 +24,46 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Bubblewrap
-        run: npm install -g @bubblewrap/cli
-
-      - name: Setup Bubblewrap config
+      - name: Install Capacitor
         run: |
-          mkdir -p ~/.bubblewrap
-          JH=$(dirname $(dirname $(readlink -f $(which java))))
-          AS=${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}
-          echo "{\"jdkPath\":\"$JH\",\"androidSdkPath\":\"$AS\"}" > ~/.bubblewrap/config.json
+          npm init -y
+          npm install @capacitor/core @capacitor/cli @capacitor/android
 
-      - name: Init Bubblewrap
+      - name: Init Capacitor
         run: |
-          mkdir -p bubblewrap-project
-          cd bubblewrap-project
-          printf 'n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n' | bubblewrap init --manifest https://kok1232.github.io/random-group/manifest.json --skipPwaValidation 2>&1
+          npx cap init "RandomGroup" "io.github.kok1232.randomgroup" --web-dir www
+          mkdir -p www
+          cp index.html www/ 2>/dev/null || echo "no index.html"
 
-      - name: List project files
+      - name: Create www/index.html with redirect
         run: |
-          echo "=== bubblewrap-project ==="
-          ls -la bubblewrap-project/ || echo "empty"
+          cat > www/index.html << 'HTML'
+          <!DOCTYPE html>
+          <html>
+          <head>
+          <meta http-equiv="refresh" content="0; url=https://kok1232.github.io/random-group/">
+          <script>window.location.href='https://kok1232.github.io/random-group/';</script>
+          </head>
+          <body>Loading...</body>
+          </html>
+          HTML
 
-      - name: Build with Gradle
+      - name: Add Android platform
+        run: npx cap add android
+
+      - name: Build APK
         run: |
-          cd bubblewrap-project
-          if [ -f gradlew ]; then
-            chmod +x gradlew
-            ./gradlew assembleRelease --no-daemon 2>&1
-          else
-            echo "No gradlew - init failed"
-            exit 1
-          fi
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon 2>&1
 
-      - name: Find outputs
-        run: find . -name "*.apk" -o -name "*.aab" 2>/dev/null || echo "none"
+      - name: Find APK
+        run: find . -name "*.apk" 2>/dev/null
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: random-group-apk
-          path: |
-            **/*.apk
-            **/*.aab
+          path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: warn
           retention-days: 7
