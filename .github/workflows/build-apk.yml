@@ -6,6 +6,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    
+    # 預先啟用 Node 24 支援，消除 GitHub 於 2026-06-16 起的棄用警告
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -59,16 +64,15 @@ jobs:
           }
           EOF
 
-      # 1. 依照「螢幕擷取畫面 2026-06-15 123842.png」加入生成金鑰步驟
-      # 調整：直接在根目錄生成，避免 cd android 後的路徑混淆
+      # 修正點：將原本錯誤的 -dbname 修改為正確的 -dname
       - name: Sign AAB (Generate Keystore)
         run: |
           keytool -genkey -v -keystore release.keystore \
             -alias release -keyalg RSA -keysize 2048 -validity 10000 \
-            -dbname "CN=kok1232, OU=kok1232, O=kok1232, L=TW, S=TW, C=TW" \
+            -dname "CN=kok1232, OU=kok1232, O=kok1232, L=TW, S=TW, C=TW" \
             -storepass android123 -keypass android123
 
-      # 2. 修改原本的 Build AAB 步驟，帶入簽名參數
+      # 自動帶入剛生成的臨時憑證進行 AAB 封裝與簽名
       - name: Build AAB
         run: |
           cd android
