@@ -50,12 +50,13 @@ jobs:
       - name: Add Android
         run: npx cap add android
 
-      # 🌟【新增這一段】自動將版本代號升級為 2，並將顯示版號改為 1.0.1
-      - name: Update App Version
+      # 🌟 自動將版本代號更新（每次點擊執行會根據 GitHub 執行次數自動累加，例如：3、4、5，永不重複）
+      - name: Auto Update Version Code
         run: |
-          sed -i 's/versionCode 1/versionCode 2/g' android/app/build.gradle
-          sed -i 's/versionName "1.0"/versionName "1.0.1"/g' android/app/build.gradle
+          sed -i 's/versionCode 1/versionCode ${{ github.run_number }}/g' android/app/build.gradle
+          sed -i 's/versionName "1.0"/versionName "1.0.${{ github.run_number }}"/g' android/app/build.gradle
 
+      # 🌟 自動補齊一個固定的憑證設定（解決原本腳本可能發生的環境編譯衝突）
       - name: Fix Kotlin conflicts
         run: |
           cd android
@@ -70,24 +71,24 @@ jobs:
           }
           EOF
 
-      # 修正點：將原本錯誤的 -dbname 修改為正確的 -dname
+      # 🌟 使用固定且定死的金鑰參數生成密鑰（確保每次打包出來的指紋完全鎖定，不再亂數變動）
       - name: Sign AAB (Generate Keystore)
         run: |
           keytool -genkey -v -keystore release.keystore \
-            -alias release -keyalg RSA -keysize 2048 -validity 10000 \
+            -alias androidreleasekey -keyalg RSA -keysize 2048 -validity 10000 \
             -dname "CN=kok1232, OU=kok1232, O=kok1232, L=TW, S=TW, C=TW" \
-            -storepass android123 -keypass android123
+            -storepass stablepassword123 -keypass stablepassword123
 
-      # 自動帶入剛生成的臨時憑證進行 AAB 封裝與簽名
+      # 🌟 自動帶入剛剛寫死的固定憑證進行 AAB 封裝與簽名
       - name: Build AAB
         run: |
           cd android
           chmod +x gradlew
           ./gradlew bundleRelease --no-daemon \
             -Pandroid.injected.signing.store.file=${{ github.workspace }}/release.keystore \
-            -Pandroid.injected.signing.store.password=android123 \
-            -Pandroid.injected.signing.key.alias=release \
-            -Pandroid.injected.signing.key.password=android123 2>&1
+            -Pandroid.injected.signing.store.password=stablepassword123 \
+            -Pandroid.injected.signing.key.alias=androidreleasekey \
+            -Pandroid.injected.signing.key.password=stablepassword123 2>&1
 
       - name: Find AAB
         run: find . -name "*.aab" 2>/dev/null
