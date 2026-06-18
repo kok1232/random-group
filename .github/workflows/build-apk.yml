@@ -76,14 +76,16 @@ jobs:
       # 🌟 透過祕密基地直接還原那組 Google 認可的原始固定金鑰，杜絕隨機生成！
      # 🌟 使用最嚴格的標準格式還原固定金鑰憑證，確保二進位檔案完全不毀損
       # 🌟 用精準時間戳與定死參數生成密鑰（確保每次在 GitHub Actions 跑，指紋都永遠是同一個 D6:A1:74...）
-      - name: Generate Match Keystore
+     # 🌟 直接讀取專案中現有的固定憑證進行 AAB 安全簽署與封裝（不再經過任何可能出錯的生成指令）
+      - name: Build AAB
         run: |
-          keytool -genkey -v -keystore release.keystore \
-            -alias androidreleasekey -keyalg RSA -keysize 2048 -validity 10000 \
-            -dname "CN=kok1232, OU=kok1232, O=kok1232, L=TW, S=TW, C=TW" \
-            -storepass stablepassword123 -keypass stablepassword123 \
-            -date "2026-06-15T05:00:27Z"
-
+          cd android
+          chmod +x gradlew
+          ./gradlew bundleRelease --no-daemon \
+            -Pandroid.injected.signing.store.file=${{ github.workspace }}/release.keystore \
+            -Pandroid.injected.signing.store.password=stablepassword123 \
+            -Pandroid.injected.signing.key.alias=androidreleasekey \
+            -Pandroid.injected.signing.key.password=stablepassword123 2>&1
       # 🌟 帶入寫死的密碼進行安全編譯
       - name: Build AAB
         run: |
