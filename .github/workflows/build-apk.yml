@@ -28,12 +28,12 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Capacitor
+      - name: Install Capacitor Dependencies
         run: |
           npm init -y
           npm install @capacitor/core@latest @capacitor/cli@latest @capacitor/android@latest
 
-      - name: Create www
+      - name: Create Web Root (www)
         run: |
           mkdir -p www
           cat > www/index.html << 'HTML'
@@ -43,10 +43,10 @@ jobs:
           </head><body>Loading...</body></html>
           HTML
 
-      - name: Init Capacitor
+      - name: Initialize Capacitor Config
         run: npx cap init "RandomGroup" "io.github.kok1232.randomgroup" --web-dir www
 
-      - name: Add Android
+      - name: Add or Sync Android Platform
         run: |
           if [ -d "android" ]; then
             npx cap sync android
@@ -54,26 +54,21 @@ jobs:
             npx cap add android
           fi
 
-      # 🌟 核心修正 1：直接在編譯前，強制把「不彈出瀏覽器」的信任網址注入到 Android 設定中
-      - name: Inject Allow Navigation Config
+      # 🌟 防彈出網頁安全鎖：強制將內嵌跳轉網址寫入 Android 設定，確保隨機分組系統不跳出 Chrome 瀏覽器
+      - name: Inject Allow Navigation Configuration
         run: |
           if [ -f "android/app/src/main/assets/capacitor.config.json" ]; then
             sed -i 's/"server": {/"server": { "allowNavigation": ["kok1232.github.io"],/g' android/app/src/main/assets/capacitor.config.json
           fi
 
-      # 🌟 自動將版本代號更新（避免 Google Play 版號重複）
-      - name: Auto Update Version Code
+      # 🌟 自動更新版本號：每一次點擊打包，流水版號都會自動遞增，絕對不會重複
+      - name: Auto Update Android Version Code
         run: |
           sed -i 's/versionCode 1/versionCode ${{ github.run_number }}/g' android/app/build.gradle
           sed -i 's/versionName "1.0"/versionName "1.0.${{ github.run_number }}"/g' android/app/build.gradle
 
-      # 🌟 核心修正 2：用精靈指令直接在雲端把 Base64 还原成「真正的二進位金鑰」，100% 對齊 Google 要求的指紋 D6:A1:74...
-      - name: Decode Binary Keystore
-        run: |
-          echo "/u3v6gAAAAA9TlM0AAAAAgAAAAEAAAAAD2FuZHJvaWRyZWxlYXNla2V5AAABbXnLgkwAAAVIMIIFRDCCBCygAwIBAgIET8pPSTANBgkqhkiG9w0BAQsFADByMQswCQYDVQQGEwJUVzELMAkGA1UECBMCVFcxCzAJBgNVBAcTAlRXMREwDwYDVQQKEwhob2sxMjMyMREwDwYDVQQLEwhob2sxMjMyMREwDwYDVQQDEwhob2sxMjMyMB4XDTI2MDYxNTA1MDAyN1oXDTUzMTAzMTA1MDAyN1oXDTUzMTAzMTA1MDAyN1owcjELMAkGA1UEBhMCVFcxCzAJBgNVBAgTAlRXMREwDwYDVQQHEwhob2sxMjMyMREwDwYDVQQKEwhob2sxMjMyMREwDwYDVQQLEwhob2sxMjMyMREwDwYDVQQDEwhob2sxMjMyTIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA09Z7FmOnIuB+mYI0oWb6C/vVatYvE68g/bQeF+0W0wS6bO403Y6VwNqK/H6k3iOn9m6zfG4D8H3K6d3tOqA07z0p6p4vM3w2i3NqI2w3u36N9pM1m8L2u5+y7+2K7rV4m7W7XwV1+P6x9p+A2V+P19vN4G2+V1v67rN4W5z7777z5W3t6tV2Z+f31z7wz8770z7v7Wz+F+v6+qN0yNzP/9tMzNzfv/9MzNzfv/9MzNzfv/9MzNzfv/9MzNzfv/9MzNzfv/9MzNzfv/9MzNzfv/9MzNzfv/9MzNzfv/9MzNzfv/9MzNzfv/9MzNzfv/9MzNzfv/9MzNzfv/9MzNzfv/9MzNzfv/9MzNzfv/9MzNzfv/9MzNzfvwIDAQABo4HqMIHnMB0GA1UdDgQWBBSuI3p2vjWvIclhB8U0/jA87n4+jTCBtwYDVR0jBIGvMIGsgBSuI3p2vjWvIclhB8U0/jA87n4+jaF2pHYwdDELMAkGA1UEBhMCVFcxCzAJBgNVBAgTAlRXMREwDwYDVQQHEwhob2sxMjMyMREwDwYDVQQKEwhob2sxMjMyMREwDwYDVQQLEwhob2sxMjMyMREwDwYDVQQDEwhob2sxMjMygkVET8pPSTAMBgNVHRMEBTADAQH/MA4GA1UdDwEB/wQEAwIHgDANBgkqhkiG9w0BAQsFAAOCAQEAO9gA2N6z4yXbC0Z0/vU+u/rVw7E1zXhCO7iA1+O0x89U6L+Q7eU3xV8rX/e+1V3D9vFf0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8vFv0b3D8wEAAhS3rX4Fp70qf2v76W3v2q79/fN2f8uCTw==" | base64 -d > release.keystore
-
-      # 🌟 用還原好的正確二進位金鑰進行打包
-      - name: Build AAB
+      # 🌟 核心步驟：完全跳過出錯的 Base64 轉換，直接讀取剛才上傳的完好二進位憑證進行 AAB 封裝
+      - name: Build and Sign AAB
         run: |
           cd android
           chmod +x gradlew
@@ -83,7 +78,7 @@ jobs:
             -Pandroid.injected.signing.key.alias=androidreleasekey \
             -Pandroid.injected.signing.key.password=stablepassword123 2>&1
 
-      - name: Upload Artifact
+      - name: Upload Finished Artifact
         uses: actions/upload-artifact@v4
         with:
           name: random-group-aab
