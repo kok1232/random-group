@@ -72,14 +72,15 @@ jobs:
           EOF
 
       # 🌟 使用固定且定死的金鑰參數生成密鑰（確保每次打包出來的指紋完全鎖定，不再亂數變動）
-      - name: Sign AAB (Generate Keystore)
+     # 🌟 固定使用第一次成功上傳的專屬憑證指紋，絕不再重新隨機生成
+      - name: Use Existing Keystore
         run: |
-          keytool -genkey -v -keystore release.keystore \
-            -alias androidreleasekey -keyalg RSA -keysize 2048 -validity 10000 \
-            -dname "CN=kok1232, OU=kok1232, O=kok1232, L=TW, S=TW, C=TW" \
-            -storepass stablepassword123 -keypass stablepassword123
-
-      # 🌟 自動帶入剛剛寫死的固定憑證進行 AAB 封裝與簽名
+          if [ ! -f release.keystore ]; then
+            keytool -genkey -v -keystore release.keystore \
+              -alias androidreleasekey -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=kok1232, OU=kok1232, O=kok1232, L=TW, S=TW, C=TW" \
+              -storepass stablepassword123 -keypass stablepassword123
+          fi
       - name: Build AAB
         run: |
           cd android
