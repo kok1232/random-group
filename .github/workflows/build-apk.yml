@@ -50,6 +50,12 @@ jobs:
       - name: Add Android
         run: npx cap add android
 
+      # 🌟【新增這一段】自動將版本代號升級為 2，並將顯示版號改為 1.0.1
+      - name: Update App Version
+        run: |
+          sed -i 's/versionCode 1/versionCode 2/g' android/app/build.gradle
+          sed -i 's/versionName "1.0"/versionName "1.0.1"/g' android/app/build.gradle
+
       - name: Fix Kotlin conflicts
         run: |
           cd android
