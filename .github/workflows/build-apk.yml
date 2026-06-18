@@ -67,25 +67,22 @@ jobs:
           sed -i 's/versionCode 1/versionCode ${{ github.run_number }}/g' android/app/build.gradle
           sed -i 's/versionName "1.0"/versionName "1.0.${{ github.run_number }}"/g' android/app/build.gradle
 
-      # 🌟 破局神招：我們退回最純粹的 Java 原生生成，不加任何容易報錯的時間參數！
-      # 這樣一來，不管 Java 版本怎麼變，都能 100% 現場成功打造出完美的二進位憑證！
-      # 產出的金鑰將會被 Google 第一時間直接綁定認領！
-      @ 58
+      # 🌟 核心修正：直接在 android/ 內部生成金鑰，確保接下來的編譯任務（gradlew）絕對找得到檔案！
       - name: Live Generate Perfect Keystore
         run: |
-          rm -f ${{ github.workspace }}/release.keystore
-          keytool -genkeypair -v -keystore ${{ github.workspace }}/release.keystore \
+          rm -f android/release.keystore
+          keytool -genkeypair -v -keystore android/release.keystore \
             -alias androidreleasekey -keyalg RSA -keysize 2048 -validity 10000 \
             -dname "CN=kok1232, OU=kok1232, O=kok1232, L=TW, S=TW, C=TW" \
             -storepass stablepassword123 -keypass stablepassword123
 
-      # 🌟 讀取現場生成的完好二進位憑證進行 AAB 封裝
+      # 🌟 讀取指定路徑下完好的二進位憑證進行 AAB 封裝
       - name: Build and Sign AAB
         run: |
           cd android
           chmod +x gradlew
           ./gradlew bundleRelease --no-daemon \
-            -Pandroid.injected.signing.store.file=${{ github.workspace }}/release.keystore \
+            -Pandroid.injected.signing.store.file=release.keystore \
             -Pandroid.injected.signing.store.password=stablepassword123 \
             -Pandroid.injected.signing.key.alias=androidreleasekey \
             -Pandroid.injected.signing.key.password=stablepassword123 2>&1
