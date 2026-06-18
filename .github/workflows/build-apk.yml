@@ -19,10 +19,11 @@ jobs:
         with:
           node-version: '22'
 
+      # 🌟 核心修正：將 Java 版本徹底升級到 21，完美解決 "invalid source release: 21" 的衝突！
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Setup Android SDK
@@ -67,7 +68,7 @@ jobs:
           sed -i 's/versionCode 1/versionCode ${{ github.run_number }}/g' android/app/build.gradle
           sed -i 's/versionName "1.0"/versionName "1.0.${{ github.run_number }}"/g' android/app/build.gradle
 
-      # 🌟 絕對路徑生成：直接在最外層根目錄生成金鑰
+      # 🌟 絕對路徑金鑰現場生成：確保不管在哪個目錄打包，檔案都鎖死在最外層根目錄
       - name: Live Generate Perfect Keystore
         run: |
           rm -f ${{ github.workspace }}/release.keystore
@@ -76,7 +77,7 @@ jobs:
             -dname "CN=kok1232, OU=kok1232, O=kok1232, L=TW, S=TW, C=TW" \
             -storepass stablepassword123 -keypass stablepassword123
 
-      # 🌟 絕對路徑帶入：無論 cd 到哪裡，都強制指引到正確的金鑰檔案位置
+      # 🌟 絕對路徑帶入簽章：用升級好的 Java 21 編譯器進行最完美的 AAB 封裝
       - name: Build and Sign AAB
         run: |
           cd android
