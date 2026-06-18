@@ -67,10 +67,10 @@ jobs:
           sed -i 's/versionCode 1/versionCode ${{ github.run_number }}/g' android/app/build.gradle
           sed -i 's/versionName "1.0"/versionName "1.0.${{ github.run_number }}"/g' android/app/build.gradle
 
-      # 🌟 核心突破：直接現場呼叫 Java 原生工具生成完好的二進位檔案。
-      # 不再透過網頁貼任何可能毀損的長文字！改用 Linux 完美的環境參數鎖死金鑰，絕不再亂數變動！
+      # 🌟 破局關鍵：先強行刪除可能殘留的壞檔案，再以原生 Java 工具現場打造完美二進位憑證
       - name: Live Generate Perfect Keystore
         run: |
+          rm -f ${{ github.workspace }}/release.keystore
           keytool -genkeypair -v -keystore ${{ github.workspace }}/release.keystore \
             -alias androidreleasekey -keyalg RSA -keysize 2048 -validity 10000 \
             -dname "CN=kok1232, OU=kok1232, O=kok1232, L=TW, S=TW, C=TW" \
