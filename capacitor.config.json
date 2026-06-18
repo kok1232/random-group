@@ -1,0 +1,11 @@
+{
+  "appId": "io.github.kok1232.randomgroup",
+  "appName": "RandomGroup",
+  "webDir": "www",
+  "server": {
+    "url": "https://kok1232.github.io/random-group/",
+    "allowNavigation": [
+      "kok1232.github.io"
+    ]
+  }
+}
