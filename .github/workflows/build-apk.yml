@@ -73,24 +73,21 @@ jobs:
 
       # 🌟 使用固定且定死的金鑰參數生成密鑰（確保每次打包出來的指紋完全鎖定，不再亂數變動）
      # 🌟 固定使用第一次成功上傳的專屬憑證指紋，絕不再重新隨機生成
-      - name: Use Existing Keystore
+      # 🌟 透過祕密基地直接還原那組 Google 認可的原始固定金鑰，杜絕隨機生成！
+      - name: Decode Fixed Keystore
         run: |
-          if [ ! -f release.keystore ]; then
-            keytool -genkey -v -keystore release.keystore \
-              -alias androidreleasekey -keyalg RSA -keysize 2048 -validity 10000 \
-              -dname "CN=kok1232, OU=kok1232, O=kok1232, L=TW, S=TW, C=TW" \
-              -storepass stablepassword123 -keypass stablepassword123
-          fi
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
+
+      # 🌟 使用密室裡的固定密碼進行 AAB 安全簽署與封裝
       - name: Build AAB
         run: |
           cd android
           chmod +x gradlew
           ./gradlew bundleRelease --no-daemon \
             -Pandroid.injected.signing.store.file=${{ github.workspace }}/release.keystore \
-            -Pandroid.injected.signing.store.password=stablepassword123 \
-            -Pandroid.injected.signing.key.alias=androidreleasekey \
-            -Pandroid.injected.signing.key.password=stablepassword123 2>&1
-
+            -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
+            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
+            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }} 2>&1
       - name: Find AAB
         run: find . -name "*.aab" 2>/dev/null
 
